@@ -94,6 +94,9 @@ function resize(file,max=1600){return new Promise((res,rej)=>{const img=new Imag
     URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',0.8))};
   img.onerror=rej;img.src=url})}
 async function loadPhotos(ids){const list=await Promise.all(ids.map(i=>get('photos',i)));return Object.fromEntries(list.filter(Boolean).map(p=>[p.id,p.data]))}
+// To knapper: kamera direkte (capture) og galleri (flere bilder)
+const photoButtons=(target,cls)=>`<label class="${cls}">📷${cls==='btn'?' ':'<br>'}Ta bilde<input type="file" accept="image/*" capture="environment" hidden data-photo="${target}"></label>`+
+  `<label class="${cls}">🖼${cls==='btn'?' ':'<br>'}Galleri<input type="file" accept="image/*" multiple hidden data-photo="${target}"></label>`;
 const thumbs=(ids,ph)=>ids.filter(i=>ph[i]).map(i=>`<img src="${ph[i]}" data-act="view" data-id="${i}" alt="">`).join('');
 function progress(c){const n=c.items.length,d=c.items.filter(i=>i.status).length,a=c.items.filter(i=>i.status==='avvik').length;
   return {n,d,a,pct:n?Math.round(d/n*100):0}}
@@ -170,7 +173,7 @@ async function viewChecklist(id){
      <div class="item-head"><span class="muted">${n+1}.</span><div class="txt">${esc(i.text)}</div><button class="icon" data-act="delItem" data-id="${i.id}" title="Slett punkt">✕</button></div>
      <div class="status">${['ok','avvik','ir'].map(s=>`<button class="sbtn ${s} ${i.status===s?'on':''}" data-act="status" data-id="${i.id}" data-s="${s}">${SHORT[s]}</button>`).join('')}</div>
      <textarea data-scope="item" data-field="comment" data-id="${i.id}" placeholder="${i.status==='avvik'?'Beskriv avviket og tiltak…':'Kommentar'}">${esc(i.comment)}</textarea>
-     <div class="thumbs">${thumbs(i.photos,ph)}<label class="addphoto">📷<br>Bilde<input type="file" accept="image/*" multiple hidden data-photo="${i.id}"></label></div>
+     <div class="thumbs">${thumbs(i.photos,ph)}${photoButtons(i.id,'addphoto')}</div>
      ${i.updated?`<div class="meta">Sist endret ${fmt(i.updated)}${i.by?' av '+esc(i.by):''}</div>`:''}
     </div>`).join('')}
    <div class="card"><div class="row"><input id="newItem" placeholder="Nytt punkt…"><button data-act="addItem">Legg til</button></div></div>
@@ -178,7 +181,7 @@ async function viewChecklist(id){
    <div class="card">
     <textarea id="logText" placeholder="Hva ble gjort i dag? Leveranser, hendelser, beskjeder…"></textarea>
     <div class="thumbs" id="pendingThumbs"></div>
-    <div class="row" style="margin-top:8px"><label class="btn" style="flex:0 0 auto">📷 Bilde<input type="file" accept="image/*" multiple hidden data-photo="log"></label><span></span><button class="primary" data-act="addLog">Lagre notat</button></div>
+    <div class="row" style="margin-top:8px">${photoButtons('log','btn')}<span></span><button class="primary" data-act="addLog">Lagre notat</button></div>
     ${c.log.slice().reverse().map(l=>`<div class="log"><div class="meta">${fmt(l.ts)}${l.by?' · '+esc(l.by):''}<button class="icon" data-act="delLog" data-id="${l.id}" title="Slett">✕</button></div>
       <div style="white-space:pre-wrap">${esc(l.text)}</div><div class="thumbs">${thumbs(l.photos,ph)}</div></div>`).join('')}
    </div>`);
