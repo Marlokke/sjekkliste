@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sjekkliste – Løkkeberg Prosjekt</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--text:#1d2330;--muted:#6b7280;--line:#e3e6ea;--accent:#1f5f8b;--ok:#1e8e3e;--dev:#c5221f;--na:#8a8f98}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:16px;line-height:1.4}
+header.top{background:var(--accent);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+header.top a{color:#fff;text-decoration:none;font-size:20px}
+header.top h1{font-size:18px;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+main{max-width:860px;margin:0 auto;padding:16px}
+h2{font-size:17px;margin:20px 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+a.card{display:block;color:inherit;text-decoration:none}
+a.card:hover{border-color:var(--accent)}
+.muted{color:var(--muted);font-size:14px}
+input,textarea,select{font:inherit;width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text)}
+textarea{min-height:44px;resize:vertical}
+label.f{display:block;font-size:13px;color:var(--muted);margin:8px 0 3px}
+button,.btn{font:inherit;padding:9px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--text);cursor:pointer;display:inline-block;text-decoration:none}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger{color:var(--dev);border-color:#f0c4c3}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>*{flex:1 1 auto}
+.row>button,.row>.btn,.row>label.btn{flex:0 0 auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media(max-width:560px){.grid2{grid-template-columns:1fr}}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:8px}
+.bar>div{height:100%;background:var(--ok)}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:10px;background:#eef2f6;margin-left:6px}
+.tag.dev{background:#fde8e7;color:var(--dev)}
+.item{border-left:5px solid var(--line)}
+.item.st-ok{border-left-color:var(--ok)}
+.item.st-avvik{border-left-color:var(--dev)}
+.item.st-ir{border-left-color:var(--na)}
+.item-head{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px}
+.item-head .txt{flex:1;font-weight:600}
+.icon{border:none;background:none;color:var(--muted);padding:2px 6px;font-size:16px}
+.status{display:flex;gap:6px;margin-bottom:8px}
+.sbtn{flex:1;padding:8px 4px}
+.sbtn.ok.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.sbtn.avvik.on{background:var(--dev);border-color:var(--dev);color:#fff}
+.sbtn.ir.on{background:var(--na);border-color:var(--na);color:#fff}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.thumbs img{width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--line)}
+.addphoto{display:inline-flex;align-items:center;justify-content:center;width:72px;height:72px;border:1px dashed #b8c0ca;border-radius:6px;font-size:13px;color:var(--muted);cursor:pointer;text-align:center}
+.meta{font-size:12px;color:var(--muted);margin-top:6px}
+.log{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+#viewer{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:20;padding:16px}
+#viewer img{max-width:100%;max-height:80vh;border-radius:6px}
+#viewer .row{margin-top:12px}
+/* Rapport */
+.report h1{font-size:22px;margin:0 0 4px}
+.report table{width:100%;border-collapse:collapse;margin:12px 0}
+.report td,.report th{border:1px solid #ccc;padding:6px 8px;vertical-align:top;font-size:14px;text-align:left}
+.report .photos img{width:150px;height:110px;object-fit:cover;margin:4px 4px 0 0;border:1px solid #ccc}
+.st-label.ok{color:var(--ok);font-weight:600}.st-label.avvik{color:var(--dev);font-weight:600}.st-label.ir{color:var(--na)}
+@media print{header.top,.noprint{display:none!important}body{background:#fff}main{padding:0;max-width:none}.card{border:none;padding:0}tr{page-break-inside:avoid}}
+</style>
+</head>
+<body>
+<header class="top"><a id="back" href="#/" title="Tilbake">←</a><h1 id="title">Sjekkliste</h1></header>
+<main id="main"></main>
+<div id="viewer"><img id="viewerImg" alt=""><div class="row"><button id="viewerDel" class="danger">Slett bilde</button><button id="viewerClose">Lukk</button></div></div>
+
+<script>
+// ---------- Lagring (IndexedDB i nettleseren) ----------
+let db;
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('sjekkliste',1);
+  r.onupgradeneeded=()=>{const d=r.result;['projects','checklists','photos','templates'].forEach(s=>{if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'id'})})};
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function tx(store,mode,fn){return new Promise((res,rej)=>{const t=db.transaction(store,mode);let out;const r=fn(t.objectStore(store));
+  if(r)r.onsuccess=()=>out=r.result;t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error)})}
+const get=(s,id)=>tx(s,'readonly',st=>st.get(id));
+const all=s=>tx(s,'readonly',st=>st.getAll());
+const put=(s,v)=>tx(s,'readwrite',st=>st.put(v));
+const del=(s,id)=>tx(s,'readwrite',st=>st.delete(id));
+
+// ---------- Hjelpere ----------
+const $=s=>document.querySelector(s);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=ts=>ts?new Date(ts).toLocaleString('nb-NO',{dateStyle:'short',timeStyle:'short'}):'';
+const go=h=>{location.hash=h};
+const LABEL={ok:'OK',avvik:'Avvik',ir:'Ikke relevant'};
+const SHORT={ok:'OK',avvik:'Avvik',ir:'I.R.'};
+
+function resize(file,max=1600){return new Promise((res,rej)=>{const img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');
+    c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',0.8))};
+  img.onerror=rej;img.src=url})}
+async function loadPhotos(ids){const list=await Promise.all(ids.map(i=>get('photos',i)));return Object.fromEntries(list.filter(Boolean).map(p=>[p.id,p.data]))}
+const thumbs=(ids,ph)=>ids.filter(i=>ph[i]).map(i=>`<img src="${ph[i]}" data-act="view" data-id="${i}" alt="">`).join('');
+function progress(c){const n=c.items.length,d=c.items.filter(i=>i.status).length,a=c.items.filter(i=>i.status==='avvik').length;
+  return {n,d,a,pct:n?Math.round(d/n*100):0}}
+
+const DEFAULT_TEMPLATES=[
+ {id:'t-oppstart',name:'Oppstart byggeplass',items:['SHA-plan gjennomgått','Byggeplass sikret og skiltet','Strøm og vann tilgjengelig','Brakke / sanitær på plass','Avfallshåndtering avklart','Naboer varslet','Eksisterende skader fotografert']},
+ {id:'t-vatrom',name:'Våtrom / bad',items:['Fall mot sluk kontrollert','Sluk og mansjett montert','Membran påført iht. produsent','Smøremembran tørketid overholdt','Rørgjennomføringer tettet','Flis og fuger kontrollert','Ventilasjon kontrollert','Dokumentasjon membran (bilder) tatt']},
+ {id:'t-overlevering',name:'Ferdigbefaring / overlevering',items:['Rengjøring utført','Overflater kontrollert for skader','Dører og vinduer justert','Lister og avslutninger','FDV-dokumentasjon overlevert','Restarbeider notert','Kunde har signert']}
+];
+
+// ---------- Visninger ----------
+let cur=null;      // sjekklisten som vises
+let pendingLog=[]; // bilder til neste loggnotat
+function setView(title,back,html){$('#title').textContent=title;const b=$('#back');b.style.visibility=back?'visible':'hidden';b.href='#'+(back||'/');$('#main').innerHTML=html;window.scrollTo(0,0)}
+
+async function viewHome(){
+  const ps=(await all('projects')).sort((a,b)=>b.created-a.created);
+  const cls=await all('checklists');
+  setView('Løkkeberg Prosjekt – Sjekklister',null,`
+   <h2>Prosjekter</h2>
+   ${ps.map(p=>{const mine=cls.filter(c=>c.projectId===p.id);const dev=mine.reduce((s,c)=>s+progress(c).a,0);
+     return `<a class="card" href="#/p/${p.id}"><b>${esc(p.name)}</b>${dev?`<span class="tag dev">${dev} avvik</span>`:''}
+     <div class="muted">${esc([p.address,p.customer].filter(Boolean).join(' · '))||'&nbsp;'}</div>
+     <div class="muted">${mine.length} sjekkliste(r)</div></a>`}).join('')||'<p class="muted">Ingen prosjekter ennå.</p>'}
+   <div class="card"><b>Nytt prosjekt</b>
+    <label class="f">Prosjektnavn</label><input id="np-name" placeholder="F.eks. Rehab bad – Storgata 12">
+    <div class="grid2"><div><label class="f">Adresse</label><input id="np-addr"></div><div><label class="f">Kunde</label><input id="np-cust"></div></div>
+    <div style="margin-top:10px"><button class="primary" data-act="newProject">Opprett prosjekt</button></div></div>
+   <div class="row noprint" style="margin-top:20px">
+    <a class="btn" href="#/maler">Maler</a>
+    <button data-act="export">Ta sikkerhetskopi</button>
+    <label class="btn">Gjenopprett kopi<input type="file" accept=".json" hidden data-import></label>
+   </div>`);
+}
+
+async function viewProject(id){
+  const p=await get('projects',id);if(!p)return go('/');
+  const cls=(await all('checklists')).filter(c=>c.projectId===id).sort((a,b)=>b.created-a.created);
+  const tpls=await all('templates');
+  setView(p.name,'/',`
+   <div class="card">
+    <label class="f">Prosjektnavn</label><input data-scope="proj" data-field="name" value="${esc(p.name)}">
+    <div class="grid2"><div><label class="f">Adresse</label><input data-scope="proj" data-field="address" value="${esc(p.address)}"></div>
+    <div><label class="f">Kunde</label><input data-scope="proj" data-field="customer" value="${esc(p.customer)}"></div></div>
+   </div>
+   <h2>Sjekklister</h2>
+   ${cls.map(c=>{const g=progress(c);return `<a class="card" href="#/c/${c.id}"><b>${esc(c.title)}</b>${g.a?`<span class="tag dev">${g.a} avvik</span>`:''}
+     <div class="muted">Opprettet ${fmt(c.created)} · ${g.d}/${g.n} punkter</div><div class="bar"><div style="width:${g.pct}%"></div></div></a>`}).join('')||'<p class="muted">Ingen sjekklister ennå.</p>'}
+   <div class="card"><b>Ny sjekkliste</b>
+    <label class="f">Mal</label><select id="nc-tpl"><option value="">Tom liste</option>${tpls.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select>
+    <label class="f">Tittel (valgfritt)</label><input id="nc-title" placeholder="F.eks. Bad 2. etg">
+    <div style="margin-top:10px"><button class="primary" data-act="newChecklist" data-id="${id}">Opprett sjekkliste</button></div></div>
+   <div class="noprint" style="margin-top:20px"><button class="danger" data-act="delProject" data-id="${id}">Slett prosjekt</button></div>`);
+  cur={project:p};
+}
+
+async function viewChecklist(id){
+  const c=await get('checklists',id);if(!c)return go('/');
+  const p=await get('projects',c.projectId);
+  cur=c;
+  const ph=await loadPhotos([...c.items.flatMap(i=>i.photos),...c.log.flatMap(l=>l.photos)]);
+  const g=progress(c);
+  setView(c.title,'/p/'+c.projectId,`
+   <div class="card">
+    <div class="muted">${esc(p?.name)}</div>
+    <div class="grid2"><div><label class="f">Tittel</label><input data-scope="cl" data-field="title" value="${esc(c.title)}"></div>
+    <div><label class="f">Utført av</label><input data-scope="cl" data-field="by" value="${esc(c.by)}" placeholder="Navn"></div></div>
+    <div class="muted" style="margin-top:8px">${g.d} av ${g.n} punkter kontrollert${g.a?` · <b style="color:var(--dev)">${g.a} avvik</b>`:''}</div>
+    <div class="bar"><div style="width:${g.pct}%"></div></div>
+    <div class="row noprint" style="margin-top:12px">
+     <a class="btn" href="#/r/${c.id}">Rapport / PDF</a><button data-act="saveTpl">Lagre som mal</button><button class="danger" data-act="delChecklist">Slett liste</button></div>
+   </div>
+   ${c.items.map((i,n)=>`<div class="card item st-${i.status||'none'}">
+     <div class="item-head"><span class="muted">${n+1}.</span><div class="txt">${esc(i.text)}</div><button class="icon" data-act="delItem" data-id="${i.id}" title="Slett punkt">✕</button></div>
+     <div class="status">${['ok','avvik','ir'].map(s=>`<button class="sbtn ${s} ${i.status===s?'on':''}" data-act="status" data-id="${i.id}" data-s="${s}">${SHORT[s]}</button>`).join('')}</div>
+     <textarea data-scope="item" data-field="comment" data-id="${i.id}" placeholder="${i.status==='avvik'?'Beskriv avviket og tiltak…':'Kommentar'}">${esc(i.comment)}</textarea>
+     <div class="thumbs">${thumbs(i.photos,ph)}<label class="addphoto">📷<br>Bilde<input type="file" accept="image/*" multiple hidden data-photo="${i.id}"></label></div>
+     ${i.updated?`<div class="meta">Sist endret ${fmt(i.updated)}${i.by?' av '+esc(i.by):''}</div>`:''}
+    </div>`).join('')}
+   <div class="card"><div class="row"><input id="newItem" placeholder="Nytt punkt…"><button data-act="addItem">Legg til</button></div></div>
+   <h2>Logg / dagbok</h2>
+   <div class="card">
+    <textarea id="logText" placeholder="Hva ble gjort i dag? Leveranser, hendelser, beskjeder…"></textarea>
+    <div class="thumbs" id="pendingThumbs"></div>
+    <div class="row" style="margin-top:8px"><label class="btn" style="flex:0 0 auto">📷 Bilde<input type="file" accept="image/*" multiple hidden data-photo="log"></label><span></span><button class="primary" data-act="addLog">Lagre notat</button></div>
+    ${c.log.slice().reverse().map(l=>`<div class="log"><div class="meta">${fmt(l.ts)}${l.by?' · '+esc(l.by):''}<button class="icon" data-act="delLog" data-id="${l.id}" title="Slett">✕</button></div>
+      <div style="white-space:pre-wrap">${esc(l.text)}</div><div class="thumbs">${thumbs(l.photos,ph)}</div></div>`).join('')}
+   </div>`);
+  renderPending();
+}
+
+async function viewReport(id){
+  const c=await get('checklists',id);if(!c)return go('/');
+  const p=await get('projects',c.projectId);
+  const ph=await loadPhotos([...c.items.flatMap(i=>i.photos),...c.log.flatMap(l=>l.photos)]);
+  const g=progress(c);
+  const pics=ids=>ids.length?`<div class="photos">${ids.filter(i=>ph[i]).map(i=>`<img src="${ph[i]}" alt="">`).join('')}</div>`:'';
+  setView('Rapport','/c/'+id,`
+   <div class="row noprint" style="margin-bottom:12px"><button class="primary" onclick="print()">Skriv ut / lagre som PDF</button></div>
+   <div class="card report">
+    <h1>${esc(c.title)}</h1>
+    <div><b>Løkkeberg Prosjekt AS</b></div>
+    <table>
+     <tr><th>Prosjekt</th><td>${esc(p?.name)}</td><th>Kunde</th><td>${esc(p?.customer)}</td></tr>
+     <tr><th>Adresse</th><td>${esc(p?.address)}</td><th>Utført av</th><td>${esc(c.by)}</td></tr>
+     <tr><th>Opprettet</th><td>${fmt(c.created)}</td><th>Status</th><td>${g.d}/${g.n} kontrollert, ${g.a} avvik</td></tr>
+    </table>
+    <table><tr><th style="width:30px">#</th><th>Kontrollpunkt</th><th style="width:90px">Status</th><th>Kommentar / bilder</th></tr>
+     ${c.items.map((i,n)=>`<tr><td>${n+1}</td><td>${esc(i.text)}<div class="muted">${fmt(i.updated)}</div></td>
+      <td>${i.status?`<span class="st-label ${i.status}">${LABEL[i.status]}</span>`:'<span class="muted">Ikke kontrollert</span>'}</td>
+      <td style="white-space:pre-wrap">${esc(i.comment)}${pics(i.photos)}</td></tr>`).join('')}
+    </table>
+    ${c.log.length?`<h2>Logg</h2><table>${c.log.map(l=>`<tr><td style="width:130px">${fmt(l.ts)}${l.by?'<br>'+esc(l.by):''}</td><td style="white-space:pre-wrap">${esc(l.text)}${pics(l.photos)}</td></tr>`).join('')}</table>`:''}
+    <table style="margin-top:40px"><tr><td style="height:60px;width:50%">Signatur utførende:</td><td>Signatur kunde:</td></tr></table>
+    <div class="muted">Generert ${fmt(Date.now())}</div>
+   </div>`);
+}
+
+async function viewTemplates(){
+  const ts=await all('templates');
+  setView('Maler','/',`
+   <p class="muted">Ett kontrollpunkt per linje. Endringer lagres automatisk.</p>
+   ${ts.map(t=>`<div class="card"><label class="f">Navn</label><input data-scope="tpl" data-field="name" data-id="${t.id}" value="${esc(t.name)}">
+     <label class="f">Punkter</label><textarea rows="${Math.max(4,t.items.length+1)}" data-scope="tpl" data-field="items" data-id="${t.id}">${esc(t.items.join('\n'))}</textarea>
+     <div style="margin-top:8px"><button class="danger" data-act="delTpl" data-id="${t.id}">Slett mal</button></div></div>`).join('')}
+   <button class="primary" data-act="newTpl">Ny mal</button>`);
+}
+
+async function route(){
+  const [,type,id]=(location.hash.slice(1)||'/').split('/');
+  pendingLog=[];
+  if(type==='p')return viewProject(id);
+  if(type==='c')return viewChecklist(id);
+  if(type==='r')return viewReport(id);
+  if(type==='maler')return viewTemplates();
+  return viewHome();
+}
+const saveCur=()=>put('checklists',cur);
+const findItem=id=>cur.items.find(i=>i.id===id);
+const touch=i=>{i.updated=Date.now();i.by=cur.by||''};
+function renderPending(){const el=$('#pendingThumbs');if(el)el.innerHTML=pendingLog.map(p=>`<img src="${p.data}" alt="">`).join('')}
+
+// ---------- Handlinger ----------
+const actions={
+  async newProject(){const name=$('#np-name').value.trim();if(!name)return alert('Gi prosjektet et navn.');
+    const p={id:uid(),name,address:$('#np-addr').value.trim(),customer:$('#np-cust').value.trim(),created:Date.now()};
+    await put('projects',p);go('/p/'+p.id)},
+  async delProject(el){if(!confirm('Slette prosjektet og alle sjekklistene?'))return;
+    for(const c of (await all('checklists')).filter(c=>c.projectId===el.dataset.id))await removeChecklist(c);
+    await del('projects',el.dataset.id);go('/')},
+  async newChecklist(el){const t=await get('templates',$('#nc-tpl').value);
+    const c={id:uid(),projectId:el.dataset.id,title:$('#nc-title').value.trim()||t?.name||'Sjekkliste',by:'',created:Date.now(),
+      items:(t?.items||[]).map(text=>({id:uid(),text,status:'',comment:'',photos:[],updated:0})),log:[]};
+    await put('checklists',c);go('/c/'+c.id)},
+  async delChecklist(){if(!confirm('Slette denne sjekklisten?'))return;const pid=cur.projectId;await removeChecklist(cur);go('/p/'+pid)},
+  async status(el){const i=findItem(el.dataset.id);i.status=i.status===el.dataset.s?'':el.dataset.s;touch(i);await saveCur();keepScroll(route)},
+  async addItem(){const v=$('#newItem').value.trim();if(!v)return;cur.items.push({id:uid(),text:v,status:'',comment:'',photos:[],updated:0});await saveCur();
+    await keepScroll(route);$('#newItem').focus()},
+  async delItem(el){if(!confirm('Slette punktet?'))return;const i=findItem(el.dataset.id);for(const p of i.photos)await del('photos',p);
+    cur.items=cur.items.filter(x=>x!==i);await saveCur();keepScroll(route)},
+  async addLog(){const text=$('#logText').value.trim();if(!text&&!pendingLog.length)return;
+    cur.log.push({id:uid(),ts:Date.now(),by:cur.by||'',text,photos:pendingLog.map(p=>p.id)});pendingLog=[];await saveCur();keepScroll(route)},
+  async delLog(el){if(!confirm('Slette notatet?'))return;const l=cur.log.find(x=>x.id===el.dataset.id);for(const p of l.photos)await del('photos',p);
+    cur.log=cur.log.filter(x=>x!==l);await saveCur();keepScroll(route)},
+  async saveTpl(){const name=prompt('Navn på malen:',cur.title);if(!name)return;
+    await put('templates',{id:uid(),name,items:cur.items.map(i=>i.text)});alert('Malen er lagret.')},
+  async newTpl(){await put('templates',{id:uid(),name:'Ny mal',items:[]});route()},
+  async delTpl(el){if(!confirm('Slette malen?'))return;await del('templates',el.dataset.id);route()},
+  view(el){openViewer(el.dataset.id,el.src)},
+  async export(){const data={app:'sjekkliste',version:1,exported:Date.now()};
+    for(const s of ['projects','checklists','photos','templates'])data[s]=await all(s);
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));
+    a.download=`sjekkliste-kopi-${new Date().toISOString().slice(0,10)}.json`;a.click()}
+};
+async function removeChecklist(c){for(const p of [...c.items.flatMap(i=>i.photos),...c.log.flatMap(l=>l.photos)])await del('photos',p);await del('checklists',c.id)}
+async function keepScroll(fn){const y=scrollY;await fn();scrollTo(0,y)}
+
+document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(el&&actions[el.dataset.act]){e.preventDefault();actions[el.dataset.act](el)}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='newItem')actions.addItem()});
+document.addEventListener('change',async e=>{
+  const t=e.target,d=t.dataset;
+  if(d.photo){const ids=[];
+    for(const f of t.files){const data=await resize(f),id=uid();await put('photos',{id,data});ids.push({id,data})}
+    if(d.photo==='log'){pendingLog.push(...ids);renderPending()}
+    else{const i=findItem(d.photo);i.photos.push(...ids.map(x=>x.id));touch(i);await saveCur();keepScroll(route)}
+    return}
+  if(d.import!==undefined){try{const data=JSON.parse(await t.files[0].text());
+      if(data.app!=='sjekkliste')throw 0;
+      for(const s of ['projects','checklists','photos','templates'])for(const v of data[s]||[])await put(s,v);
+      alert('Sikkerhetskopien er gjenopprettet.');route()}catch{alert('Kunne ikke lese filen.')}return}
+  if(!d.scope)return;
+  const v=t.value;
+  if(d.scope==='proj'){cur.project[d.field]=v.trim();await put('projects',cur.project);if(d.field==='name')$('#title').textContent=v}
+  if(d.scope==='cl'){cur[d.field]=v.trim();await saveCur();if(d.field==='title')$('#title').textContent=v}
+  if(d.scope==='item'){const i=findItem(d.id);i[d.field]=v;touch(i);await saveCur()}
+  if(d.scope==='tpl'){const tp=await get('templates',d.id);tp[d.field]=d.field==='items'?v.split('\n').map(s=>s.trim()).filter(Boolean):v.trim();await put('templates',tp)}
+});
+
+// Bildevisning
+let viewing=null;
+function openViewer(id,src){viewing=id;$('#viewerImg').src=src;$('#viewer').style.display='flex'}
+$('#viewerClose').onclick=()=>{$('#viewer').style.display='none'};
+$('#viewerDel').onclick=async()=>{if(!confirm('Slette bildet?'))return;
+  cur.items.forEach(i=>i.photos=i.photos.filter(p=>p!==viewing));cur.log.forEach(l=>l.photos=l.photos.filter(p=>p!==viewing));
+  await del('photos',viewing);await saveCur();$('#viewer').style.display='none';keepScroll(route)};
+
+// Oppstart
+(async()=>{db=await openDB();
+  if(!(await all('templates')).length)for(const t of DEFAULT_TEMPLATES)await put('templates',t);
+  navigator.storage?.persist?.();
+  window.addEventListener('hashchange',route);route()})();
+</script>
+</body>
+</html>
